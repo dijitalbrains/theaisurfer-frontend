@@ -9,10 +9,11 @@ import { Loader } from "../components/common/Loader";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import {
   fetchSsoSession,
-  completeSsoAuth,
+  authorizeSso,
   clearSsoState,
 } from "../redux/slices/ssoSlice";
 import { fetchCurrentUser } from "../redux/slices/authSlice";
+import { generateCodeVerifier, generateCodeChallenge } from "../utils/pkce";
 
 export const SSOConfirm: React.FC = () => {
   const navigate = useNavigate();
@@ -36,9 +37,71 @@ export const SSOConfirm: React.FC = () => {
     }
 
     const sessionId = searchParams.get("session");
+    const projectSlug = searchParams.get("project");
 
+    // Handle parent→child redirect (user clicking project on parent)
+    if (projectSlug && !sessionId) {
+      if (!token) {
+        console.log('[SSO] User not authenticated, redirecting to login');
+        navigate(`/login?returnTo=${encodeURIComponent(`/sso/confirm?project=${projectSlug}`)}`, { replace: true });
+        return;
+      }
+
+      // Initiate SSO session for this project
+      const initiateSsoForProject = async () => {
+        try {
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+          const response = await fetch(`${API_URL}/projects/${projectSlug}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to load project');
+          }
+
+          const project = await response.json();
+
+          // Generate proper PKCE parameters
+          const codeVerifier = generateCodeVerifier();
+          const codeChallenge = await generateCodeChallenge(codeVerifier);
+          const state = crypto.randomUUID();
+
+          // Now initiate SSO session
+          const ssoResponse = await fetch(
+            `${API_URL}/auth/sso?` +
+            new URLSearchParams({
+              project: projectSlug,
+              apiKey: project.apiKey,
+              returnUrl: project.allowedRedirectUrls[0],
+              state,
+              codeChallenge,
+              codeChallengeMethod: 'S256',
+            })
+          );
+
+          if (!ssoResponse.ok) {
+            const errorData = await ssoResponse.json();
+            throw new Error(errorData.message || 'Failed to initiate SSO');
+          }
+
+          const ssoData = await ssoResponse.json();
+
+          // Reload page with session ID
+          navigate(`/sso/confirm?session=${ssoData.sessionId}`, { replace: true });
+        } catch (error: any) {
+          console.error('[SSO] Failed to initiate project SSO:', error);
+          toast.error(error.message || 'Failed to initiate SSO');
+          navigate('/projects', { replace: true });
+        }
+      };
+
+      initiateSsoForProject();
+      return;
+    }
+
+    // Handle child→parent SSO (original flow)
     if (!sessionId) {
-      console.error('[SSO] No session ID provided');
+      console.error('[SSO] No session ID or project provided');
       navigate("/login", { replace: true });
       return;
     }
@@ -49,7 +112,6 @@ export const SSOConfirm: React.FC = () => {
       return;
     }
 
-    // Fetch user if not loaded (happens after fresh login)
     if (token && !user && !hasFetchedUser.current) {
       console.log('[SSO] Token exists but no user, fetching user data...');
       hasFetchedUser.current = true;
@@ -66,8 +128,6 @@ export const SSOConfirm: React.FC = () => {
   useEffect(() => {
     if (error) {
       console.warn('[SSO] Session fetch error (may be already consumed):', error);
-      // Don't show error toast for session fetch failures (might be race condition)
-      // User can still click Continue if they have sessionId
     }
   }, [error]);
 
@@ -86,28 +146,28 @@ export const SSOConfirm: React.FC = () => {
     hasCompletedAuth.current = true;
 
     try {
-      const result = await dispatch(completeSsoAuth({ sessionId, token }));
+      const result = await dispatch(authorizeSso({ sessionId, token }));
 
-      if (completeSsoAuth.fulfilled.match(result)) {
-        const { redirectUrl, tokens } = result.payload;
+      if (authorizeSso.fulfilled.match(result)) {
+        const { code, state, redirectUri } = result.payload;
 
-        // Clear SSO state (includes all flags)
         dispatch(clearSsoState());
 
-        // Use secure POST redirect via SSORedirect page
-        navigate("/sso/redirect", {
-          state: { redirectUrl, tokens },
-          replace: true,
-        });
+        const redirectUrl = new URL(redirectUri);
+        redirectUrl.searchParams.set('code', code);
+        redirectUrl.searchParams.set('state', state);
+
+        console.log('[SSOConfirm] Redirecting to:', redirectUrl.toString());
+
+        window.location.href = redirectUrl.toString();
       }
     } catch (error) {
-      hasCompletedAuth.current = false; // Reset on error so user can retry
+      hasCompletedAuth.current = false;
       toast.error("Failed to complete authentication");
     }
   };
 
   const handleCancel = () => {
-    // Clear SSO state (includes all flags)
     dispatch(clearSsoState());
     navigate("/projects");
   };
@@ -131,23 +191,19 @@ export const SSOConfirm: React.FC = () => {
     );
   }
 
-  // If session data failed to load (race condition), use fallback
   const projectName = sessionData?.projectName || "the application";
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" />
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM4YjVjZjYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJWMTZoMnYxOHptLTQgMGgtMlYxNmgydjE4em0tNCAwaDh2LTJoOHYyem0wLTRIOHYtMmg4djJ6bTAtNEg4di0yaDh2MnptMC00SDh2LTJoOHYyem0wLTRIOHYtMmg4djJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20" />
 
-      {/* Floating orbs */}
       <div className="absolute top-20 left-20 w-72 h-72 bg-primary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float" />
       <div
         className="absolute bottom-20 right-20 w-72 h-72 bg-accent-pink rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float"
         style={{ animationDelay: "2s" }}
       />
 
-      {/* Content */}
       <div className="relative z-10 w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Logo size="lg" />
@@ -155,14 +211,12 @@ export const SSOConfirm: React.FC = () => {
 
         <Card className="shadow-2xl backdrop-blur-xl">
           <div className="text-center space-y-6">
-            {/* Project Icon */}
             <div className="flex justify-center">
               <div className="p-4 rounded-2xl bg-gradient-primary shadow-lg shadow-primary-500/30">
                 <Rocket className="w-12 h-12 text-white" />
               </div>
             </div>
 
-            {/* Title */}
             <div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Continue to {projectName}?
@@ -175,7 +229,6 @@ export const SSOConfirm: React.FC = () => {
               </p>
             </div>
 
-            {/* User info */}
             {user && (
               <div className="glass-dark rounded-xl p-4">
                 <p className="text-sm text-gray-400 mb-1">Signing in as</p>
@@ -186,7 +239,6 @@ export const SSOConfirm: React.FC = () => {
               </div>
             )}
 
-            {/* Actions */}
             <div className="space-y-3 pt-2">
               <Button
                 variant="primary"
@@ -215,7 +267,6 @@ export const SSOConfirm: React.FC = () => {
               </Button>
             </div>
 
-            {/* Security note */}
             <p className="text-xs text-gray-500 pt-4">
               Your authentication will be securely shared with{" "}
               {projectName}

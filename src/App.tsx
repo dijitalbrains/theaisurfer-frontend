@@ -5,7 +5,6 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Projects } from "./pages/Projects";
-import { RedirectHandler } from "./pages/RedirectHandler";
 import { SSOConfirm } from "./pages/SSOConfirm";
 import { SSORedirect } from "./pages/SSORedirect";
 
@@ -30,11 +29,7 @@ const router = createBrowserRouter([
     element: <Projects />,
     errorElement: <ErrorBoundary />,
   },
-  {
-    path: "/redirect/:projectSlug",
-    element: <RedirectHandler />,
-    errorElement: <ErrorBoundary />,
-  },
+
   {
     path: "/sso/confirm",
     element: <SSOConfirm />,

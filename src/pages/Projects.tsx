@@ -76,7 +76,7 @@ export const Projects: React.FC = () => {
   };
 
   const handleProjectClick = (projectSlug: string) => {
-    navigate(`/redirect/${projectSlug}`);
+    navigate(`/sso/confirm?project=${projectSlug}`);
   };
 
   if (isLoading) {

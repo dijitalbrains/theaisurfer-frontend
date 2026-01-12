@@ -42,15 +42,15 @@ export const fetchSsoSession = createAsyncThunk(
   }
 );
 
-export const completeSsoAuth = createAsyncThunk(
-  'sso/complete',
+export const authorizeSso = createAsyncThunk(
+  'sso/authorize',
   async (
     { sessionId, token }: { sessionId: string; token: string },
     { rejectWithValue }
   ) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/auth/sso/complete`,
+        `${import.meta.env.VITE_API_URL}/auth/sso/authorize`,
         {
           method: 'POST',
           headers: {
@@ -62,14 +62,14 @@ export const completeSsoAuth = createAsyncThunk(
       );
 
       if (!response.ok) {
-        throw new Error('Failed to complete SSO authentication');
+        throw new Error('Failed to authorize SSO');
       }
 
       const data = await response.json();
       return data;
     } catch (error: any) {
       return rejectWithValue(
-        error.message || 'Failed to complete SSO authentication'
+        error.message || 'Failed to authorize SSO'
       );
     }
   }
@@ -109,19 +109,18 @@ const ssoSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Complete SSO auth
+    // Authorize SSO
     builder
-      .addCase(completeSsoAuth.pending, (state) => {
+      .addCase(authorizeSso.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(completeSsoAuth.fulfilled, (state) => {
+      .addCase(authorizeSso.fulfilled, (state) => {
         state.isLoading = false;
-        // Clear state after successful completion
         state.sessionId = null;
         state.sessionData = null;
       })
-      .addCase(completeSsoAuth.rejected, (state, action) => {
+      .addCase(authorizeSso.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });
