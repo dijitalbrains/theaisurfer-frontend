@@ -2,17 +2,21 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Lock } from 'lucide-react';
-import { Link } from 'react-router';
-import { Input } from '../common/Input';
-import { Button } from '../common/Button';
-import { loginSchema, type LoginFormData } from '../../utils/validation';
+import { Link, useSearchParams } from "react-router";
+import { Input } from "../common/Input";
+import { Button } from "../common/Button";
+import { loginSchema, type LoginFormData } from "../../utils/validation";
 
 interface LoginFormProps {
   onSubmit: (data: LoginFormData) => void;
   isLoading: boolean;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({
+  onSubmit,
+  isLoading,
+}) => {
+  const [searchParams] = useSearchParams();
   const {
     register,
     handleSubmit,
@@ -21,10 +25,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading }) => 
     resolver: zodResolver(loginSchema),
   });
 
+  const returnTo = searchParams.get("returnTo");
+  
+  const registerLink = returnTo
+    ? `/register?returnTo=${encodeURIComponent(returnTo)}`
+    : "/register";
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <Input
-        {...register('email')}
+        {...register("email")}
         label="Email"
         type="email"
         placeholder="your@email.com"
@@ -33,7 +43,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading }) => 
       />
 
       <Input
-        {...register('password')}
+        {...register("password")}
         label="Password"
         type="password"
         placeholder="••••••••"
@@ -41,7 +51,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading }) => 
         error={errors.password?.message}
       />
 
-      <Button type="submit" variant="primary" size="lg" className="w-full mt-6" isLoading={isLoading}>
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        className="w-full mt-6"
+        isLoading={isLoading}
+      >
         Sign In
       </Button>
 
@@ -54,7 +70,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, isLoading }) => 
         </div>
       </div>
 
-      <Link to="/register" className="block text-center">
+      <Link to={registerLink} className="block text-center">
         <Button type="button" variant="ghost" size="md" className="w-full">
           Create an account
         </Button>

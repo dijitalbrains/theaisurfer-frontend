@@ -2,7 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Lock, User } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { registerSchema, type RegisterFormData } from '../../utils/validation';
@@ -13,6 +13,7 @@ interface RegisterFormProps {
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit, isLoading }) => {
+  const [searchParams] = useSearchParams();
   const {
     register,
     handleSubmit,
@@ -20,6 +21,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit, isLoading 
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
+
+  const returnTo = searchParams.get('returnTo');
+  const loginLink = returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login';
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -83,7 +87,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSubmit, isLoading 
         </div>
       </div>
 
-      <Link to="/login" className="block text-center">
+      <Link to={loginLink} className="block text-center">
         <Button type="button" variant="ghost" size="md" className="w-full">
           Sign in instead
         </Button>

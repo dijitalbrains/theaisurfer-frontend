@@ -1,48 +1,63 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router';
-import { Login } from './pages/Login';
-import { Register } from './pages/Register';
-import { Projects } from './pages/Projects';
-import { RedirectHandler } from './pages/RedirectHandler';
-import { SSOConfirm } from './pages/SSOConfirm';
-import { SSOLogin } from './pages/SSOLogin';
+import React from "react";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router";
+import { AuthInitializer } from "./components/AuthInitializer";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { Projects } from "./pages/Projects";
+import { RedirectHandler } from "./pages/RedirectHandler";
+import { SSOConfirm } from "./pages/SSOConfirm";
+import { SSORedirect } from "./pages/SSORedirect";
 
 const router = createBrowserRouter([
   {
-    path: '/',
+    path: "/",
     element: <Navigate to="/login" replace />,
+    errorElement: <ErrorBoundary />,
   },
   {
-    path: '/login',
+    path: "/login",
     element: <Login />,
+    errorElement: <ErrorBoundary />,
   },
   {
-    path: '/register',
+    path: "/register",
     element: <Register />,
+    errorElement: <ErrorBoundary />,
   },
   {
-    path: '/projects',
+    path: "/projects",
     element: <Projects />,
+    errorElement: <ErrorBoundary />,
   },
   {
-    path: '/redirect/:projectSlug',
+    path: "/redirect/:projectSlug",
     element: <RedirectHandler />,
+    errorElement: <ErrorBoundary />,
   },
   {
-    path: '/sso/confirm',
+    path: "/sso/confirm",
     element: <SSOConfirm />,
+    errorElement: <ErrorBoundary />,
   },
   {
-    path: '/sso/login',
-    element: <SSOLogin />,
+    path: "/sso/redirect",
+    element: <SSORedirect />,
+    errorElement: <ErrorBoundary />,
   },
   {
-    path: '*',
+    path: "*",
     element: <Navigate to="/login" replace />,
+    errorElement: <ErrorBoundary />,
   },
 ]);
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthInitializer>
+      <RouterProvider router={router} />
+    </AuthInitializer>
+  );
 }
 
 export default App;

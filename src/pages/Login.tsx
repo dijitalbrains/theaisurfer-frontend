@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import React, { useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Card } from '../components/common/Card';
 import { Logo } from '../components/common/Logo';
@@ -11,13 +11,24 @@ import type { LoginFormData } from '../utils/validation';
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { isLoading, error, token } = useAppSelector((state) => state.auth);
+  const [searchParams] = useSearchParams();
+  const { isLoading, error, token, user, isInitialized } = useAppSelector((state) => state.auth);
+  
+  const hasRedirected = useRef(false);
+  const returnTo = searchParams.get('returnTo');
 
+  // All hooks must be called before any conditional returns
   useEffect(() => {
+    if (!isInitialized || hasRedirected.current) return;
+    
+    // If user has a token, they're authenticated - redirect them
     if (token) {
-      navigate('/projects');
+      hasRedirected.current = true;
+      const destination = returnTo || '/projects';
+      console.log('[Login] User already authenticated, redirecting to:', destination);
+      navigate(destination, { replace: true });
     }
-  }, [token, navigate]);
+  }, [token, isInitialized, navigate, returnTo]);
 
   useEffect(() => {
     if (error) {
@@ -26,11 +37,26 @@ export const Login: React.FC = () => {
     }
   }, [error, dispatch]);
 
+  // Conditional rendering after all hooks
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Initializing...</p>
+        </div>
+      </div>
+    );
+  }
+
   const handleLogin = async (data: LoginFormData) => {
     const result = await dispatch(login(data));
     if (login.fulfilled.match(result)) {
+      hasRedirected.current = true; // Mark as redirected to prevent useEffect interference
       toast.success('Welcome back!');
-      navigate('/projects');
+      const destination = returnTo || '/projects';
+      console.log('[Login] Login successful, redirecting to:', destination);
+      navigate(destination, { replace: true });
     }
   };
 

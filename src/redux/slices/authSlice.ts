@@ -8,6 +8,7 @@ const initialState: AuthState = {
   refreshToken: localStorage.getItem('refreshToken'),
   isLoading: false,
   error: null,
+  isInitialized: false,
 };
 
 // Async thunks
@@ -72,6 +73,7 @@ const authSlice = createSlice({
       state.token = null;
       state.refreshToken = null;
       state.error = null;
+      state.isInitialized = false;
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
     },
@@ -80,6 +82,11 @@ const authSlice = createSlice({
     },
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
+    },
+    initializeAuth: (state) => {
+      if (!state.token) {
+        state.isInitialized = true;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -93,6 +100,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.token = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
+        state.isInitialized = true;
         localStorage.setItem('accessToken', action.payload.accessToken);
         localStorage.setItem('refreshToken', action.payload.refreshToken);
       })
@@ -111,6 +119,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.token = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
+        state.isInitialized = true;
         localStorage.setItem('accessToken', action.payload.accessToken);
         localStorage.setItem('refreshToken', action.payload.refreshToken);
       })
@@ -127,10 +136,16 @@ const authSlice = createSlice({
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload;
+        state.isInitialized = true;
       })
       .addCase(fetchCurrentUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        state.isInitialized = true;
+        state.token = null;
+        state.refreshToken = null;
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
       });
 
     // Refresh token
@@ -151,5 +166,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError, setUser } = authSlice.actions;
+export const { logout, clearError, setUser, initializeAuth } = authSlice.actions;
 export default authSlice.reducer;

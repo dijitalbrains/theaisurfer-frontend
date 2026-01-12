@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import React, { useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Card } from '../components/common/Card';
 import { Logo } from '../components/common/Logo';
@@ -11,13 +11,22 @@ import type { RegisterFormData } from '../utils/validation';
 export const Register: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const [searchParams] = useSearchParams();
   const { isLoading, error, token } = useAppSelector((state) => state.auth);
+  
+  const hasRedirected = useRef(false);
+  const returnTo = searchParams.get('returnTo');
 
   useEffect(() => {
+    if (hasRedirected.current) return;
+    
     if (token) {
-      navigate('/projects');
+      hasRedirected.current = true;
+      const destination = returnTo || '/projects';
+      console.log('[Register] User already authenticated, redirecting to:', destination);
+      navigate(destination, { replace: true });
     }
-  }, [token, navigate]);
+  }, [token, navigate, returnTo]);
 
   useEffect(() => {
     if (error) {
@@ -30,8 +39,11 @@ export const Register: React.FC = () => {
     const { confirmPassword, ...registerData } = data;
     const result = await dispatch(registerAction(registerData));
     if (registerAction.fulfilled.match(result)) {
+      hasRedirected.current = true; // Mark as redirected to prevent useEffect interference
       toast.success('Account created successfully!');
-      navigate('/projects');
+      const destination = returnTo || '/projects';
+      console.log('[Register] Registration successful, redirecting to:', destination);
+      navigate(destination, { replace: true });
     }
   };
 
