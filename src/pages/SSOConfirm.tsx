@@ -13,7 +13,6 @@ import {
   clearSsoState,
 } from "../redux/slices/ssoSlice";
 import { fetchCurrentUser } from "../redux/slices/authSlice";
-import { generateCodeVerifier, generateCodeChallenge } from "../utils/pkce";
 
 export const SSOConfirm: React.FC = () => {
   const navigate = useNavigate();
@@ -27,99 +26,31 @@ export const SSOConfirm: React.FC = () => {
 
   useEffect(() => {
     if (!isInitialized) {
-      console.log('[SSO] Waiting for auth to initialize...');
       return;
     }
 
     if (hasCompletedAuth.current) {
-      console.log('[SSO] Auth already completed, skipping effect');
       return;
     }
 
     const sessionId = searchParams.get("session");
-    const projectSlug = searchParams.get("project");
 
-    // Handle parent→child redirect (user clicking project on parent)
-    if (projectSlug && !sessionId) {
-      if (!token) {
-        console.log('[SSO] User not authenticated, redirecting to login');
-        navigate(`/login?returnTo=${encodeURIComponent(`/sso/confirm?project=${projectSlug}`)}`, { replace: true });
-        return;
-      }
-
-      // Initiate SSO session for this project
-      const initiateSsoForProject = async () => {
-        try {
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-          const response = await fetch(`${API_URL}/projects/${projectSlug}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to load project');
-          }
-
-          const project = await response.json();
-
-          // Generate proper PKCE parameters
-          const codeVerifier = generateCodeVerifier();
-          const codeChallenge = await generateCodeChallenge(codeVerifier);
-          const state = crypto.randomUUID();
-
-          // Now initiate SSO session
-          const ssoResponse = await fetch(
-            `${API_URL}/auth/sso?` +
-            new URLSearchParams({
-              project: projectSlug,
-              apiKey: project.apiKey,
-              returnUrl: project.allowedRedirectUrls[0],
-              state,
-              codeChallenge,
-              codeChallengeMethod: 'S256',
-            })
-          );
-
-          if (!ssoResponse.ok) {
-            const errorData = await ssoResponse.json();
-            throw new Error(errorData.message || 'Failed to initiate SSO');
-          }
-
-          const ssoData = await ssoResponse.json();
-
-          // Reload page with session ID
-          navigate(`/sso/confirm?session=${ssoData.sessionId}`, { replace: true });
-        } catch (error: any) {
-          console.error('[SSO] Failed to initiate project SSO:', error);
-          toast.error(error.message || 'Failed to initiate SSO');
-          navigate('/projects', { replace: true });
-        }
-      };
-
-      initiateSsoForProject();
-      return;
-    }
-
-    // Handle child→parent SSO (original flow)
     if (!sessionId) {
-      console.error('[SSO] No session ID or project provided');
       navigate("/login", { replace: true });
       return;
     }
 
     if (!token) {
-      console.log('[SSO] User not authenticated, redirecting to login');
       navigate(`/login?returnTo=${encodeURIComponent(`/sso/confirm?session=${sessionId}`)}`, { replace: true });
       return;
     }
 
     if (token && !user && !hasFetchedUser.current) {
-      console.log('[SSO] Token exists but no user, fetching user data...');
       hasFetchedUser.current = true;
       dispatch(fetchCurrentUser());
     }
 
     if (!sessionData && !hasFetchedSession.current) {
-      console.log('[SSO] Fetching session data for session:', sessionId);
       hasFetchedSession.current = true;
       dispatch(fetchSsoSession(sessionId));
     }
@@ -127,7 +58,7 @@ export const SSOConfirm: React.FC = () => {
 
   useEffect(() => {
     if (error) {
-      console.warn('[SSO] Session fetch error (may be already consumed):', error);
+      toast.error('Failed to load SSO session');
     }
   }, [error]);
 
@@ -139,7 +70,6 @@ export const SSOConfirm: React.FC = () => {
     }
 
     if (hasCompletedAuth.current) {
-      console.log('[SSO] Auth already in progress, skipping');
       return;
     }
 
@@ -156,8 +86,6 @@ export const SSOConfirm: React.FC = () => {
         const redirectUrl = new URL(redirectUri);
         redirectUrl.searchParams.set('code', code);
         redirectUrl.searchParams.set('state', state);
-
-        console.log('[SSOConfirm] Redirecting to:', redirectUrl.toString());
 
         window.location.href = redirectUrl.toString();
       }

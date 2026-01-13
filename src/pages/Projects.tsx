@@ -75,8 +75,27 @@ export const Projects: React.FC = () => {
     navigate('/login');
   };
 
-  const handleProjectClick = (projectSlug: string) => {
-    navigate(`/sso/confirm?project=${projectSlug}`);
+  const handleProjectClick = async (projectSlug: string) => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${API_URL}/auth/sso/quick-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ projectSlug }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate login link');
+      }
+
+      const { loginUrl } = await response.json();
+      window.location.href = loginUrl;
+    } catch (error) {
+      toast.error('Failed to access project');
+    }
   };
 
   if (isLoading) {
