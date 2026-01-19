@@ -1,40 +1,42 @@
-import React, { useState, Fragment } from "react";
-import { waxService } from "../../../services/waxService";
-import { toast } from "react-hot-toast";
-import { Button } from "../../../components/common/Button";
+import { useState, Fragment } from 'react';
+import { waxService } from '../../../services/waxService';
+import { toast } from 'sonner';
+import { Button } from '../../../components/common/Button';
 import {
   Dialog,
   DialogPanel,
   DialogTitle,
   Transition,
   TransitionChild,
-} from "@headlessui/react";
-import { Container } from "../../../components/common/Container";
-import { InputField } from "../../../components/common/InputField";
+} from '@headlessui/react';
+import { Container } from '../../../components/common/Container';
+import { InputField } from '../../../components/common/InputField';
 
-export function BuyWaxModal({
-  open,
-  onClose,
-  onSuccess,
-}: {
+const CREDITS_PER_CENT = Number(import.meta.env.VITE_CREDITS_PER_CENT);
+
+interface BuyWaxModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-}) {
-  const [amount, setAmount] = useState(10);
-  const [loading, setLoading] = useState(false);
+}
+
+export function BuyWaxModal({ open, onClose, onSuccess }: BuyWaxModalProps) {
+  const [amountInDollars, setAmountInDollars] = useState(10);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  const creditsToReceive = amountInDollars * 100 * CREDITS_PER_CENT;
 
   const handlePurchase = async () => {
-    setLoading(true);
+    setIsPurchasing(true);
     try {
-      await waxService.purchase(amount);
-      toast.success("Wax purchase Successfully");
+      await waxService.purchaseWax(amountInDollars);
+      toast.success('Wax purchased successfully');
       onClose();
       onSuccess?.();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? "Error");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message ?? 'Failed to purchase wax');
     } finally {
-      setLoading(false);
+      setIsPurchasing(false);
     }
   };
 
@@ -80,36 +82,32 @@ export function BuyWaxModal({
                       </label>
                       <InputField
                         type="number"
-                        id="buywax"
+                        id="wax-amount"
                         placeholder="Enter amount"
-                        value={amount}
-                        onChange={(e) => setAmount(Number(e.target.value))}
+                        value={amountInDollars}
+                        onChange={(e) => setAmountInDollars(Number(e.target.value))}
                       />
                       <p className="text-sm text-[#91ACC8] mt-2 text-left">
-                        You will get {(amount * 3600).toLocaleString()} wax.
+                        You will receive {creditsToReceive.toLocaleString()} wax credits.
                       </p>
                     </div>
 
                     <div className="w-full border-t border-[rgba(255,255,255,0.1)] pt-4 mb-8">
                       <div className="flex justify-between mb-2 text-white">
                         <span>Total</span>
-                        <span className="font-bold">${amount.toFixed(2)}</span>
+                        <span className="font-bold">${amountInDollars.toFixed(2)}</span>
                       </div>
                     </div>
 
                     <div className="flex justify-center gap-4 w-full">
-                      <Button
-                        variant="ghost"
-                        size="md"
-                        onClick={onClose}
-                      >
+                      <Button variant="ghost" size="md" onClick={onClose}>
                         Cancel
                       </Button>
                       <Button
                         variant="primary"
                         size="md"
                         onClick={handlePurchase}
-                        isLoading={loading}
+                        isLoading={isPurchasing}
                       >
                         Purchase
                       </Button>

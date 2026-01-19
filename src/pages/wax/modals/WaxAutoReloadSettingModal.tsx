@@ -1,25 +1,22 @@
-import React, { useEffect, useState, Fragment } from "react";
-import { waxService } from "../../../services/waxService";
-import { toast } from "react-hot-toast";
+import React, { useEffect, useState, Fragment } from 'react';
+import { waxService } from '../../../services/waxService';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogPanel,
   DialogTitle,
   Transition,
   TransitionChild,
-} from "@headlessui/react";
-import { Container } from "../../../components/common/Container";
-import { Button } from "../../../components/common/Button";
-import { InputField } from "../../../components/common/InputField";
+} from '@headlessui/react';
+import { Container } from '../../../components/common/Container';
+import { Button } from '../../../components/common/Button';
+import { InputField } from '../../../components/common/InputField';
+import type { AutoReloadSettings } from '../../../types/wax.types';
 
 interface WaxAutoReloadSettingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialData?: {
-    autoReload: boolean;
-    reloadThreshold: number;
-    reloadAmount: number;
-  };
+  initialData?: AutoReloadSettings;
   onSuccess?: () => void;
 }
 
@@ -29,37 +26,37 @@ const WaxAutoReloadSettingModal = ({
   initialData,
   onSuccess,
 }: WaxAutoReloadSettingModalProps) => {
-  const [autoReloadEnabled, setAutoReloadEnabled] = useState(false);
-  const [reloadThreshold, setReloadThreshold] = useState<number>(0);
-  const [reloadAmount, setReloadAmount] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [threshold, setThreshold] = useState<number>(0);
+  const [amount, setAmount] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (initialData) {
-      setAutoReloadEnabled(initialData.autoReload);
-      setReloadThreshold(initialData.reloadThreshold || 0);
-      setReloadAmount(initialData.reloadAmount || 0);
+      setIsEnabled(initialData.enabled);
+      setThreshold(initialData.threshold || 0);
+      setAmount(initialData.amount || 0);
     }
   }, [initialData]);
 
   const handleSubmit = async () => {
     try {
-      setLoading(true);
+      setIsSaving(true);
 
-      await waxService.updateAutoReload({
-        autoReloadEnabled,
-        reloadThreshold,
-        reloadAmount,
+      await waxService.updateAutoReloadSettings({
+        enabled: isEnabled,
+        threshold,
+        amount,
       });
 
-      toast.success("Auto reload settings updated");
+      toast.success('Auto reload settings updated successfully');
       onClose();
       onSuccess?.();
     } catch (error) {
-      console.error("Failed to update auto reload settings", error);
-      toast.error("Failed to save settings");
+      console.error('Failed to update auto reload settings', error);
+      toast.error('Failed to save settings');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -96,78 +93,62 @@ const WaxAutoReloadSettingModal = ({
                       as="h3"
                       className="text-[20px] font-bold text-white mb-6"
                     >
-                      Wax Auto Reload Settings
+                      Auto Reload Settings
                     </DialogTitle>
 
-                    {/* Enable Toggle */}
                     <div className="w-full mb-6 flex items-center justify-between">
                       <span className="text-sm font-medium text-[#91ACC8]">
                         Enable Auto Reload
                       </span>
                       <div
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                          autoReloadEnabled ? "bg-[#F98B8D]" : "bg-gray-600"
-                        }`}
-                        onClick={() => setAutoReloadEnabled(!autoReloadEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${isEnabled ? 'bg-[#F98B8D]' : 'bg-gray-600'
+                          }`}
+                        onClick={() => setIsEnabled(!isEnabled)}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            autoReloadEnabled
-                              ? "translate-x-6"
-                              : "translate-x-1"
-                          }`}
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
                         />
                       </div>
                     </div>
 
-                    {/* Threshold */}
                     <div className="w-full mb-4">
                       <label className="mb-2 block text-sm font-medium text-[#91ACC8] text-left">
                         Reload when credits fall below
                       </label>
                       <InputField
                         type="number"
-                        id="reloadThreshold"
+                        id="reload-threshold"
                         placeholder="Enter threshold"
-                        value={reloadThreshold}
-                        onChange={(e) =>
-                          setReloadThreshold(Number(e.target.value))
-                        }
-                        disabled={!autoReloadEnabled}
+                        value={threshold}
+                        onChange={(e) => setThreshold(Number(e.target.value))}
+                        disabled={!isEnabled}
                       />
                     </div>
 
-                    {/* Reload Amount */}
                     <div className="w-full mb-8">
                       <label className="mb-2 block text-sm font-medium text-[#91ACC8] text-left">
-                        Reload credits amount
+                        Reload amount (in dollars)
                       </label>
                       <InputField
                         type="number"
-                        id="reloadAmount"
+                        id="reload-amount"
                         placeholder="Enter amount"
-                        value={reloadAmount}
-                        onChange={(e) =>
-                          setReloadAmount(Number(e.target.value))
-                        }
-                        disabled={!autoReloadEnabled}
+                        value={amount}
+                        onChange={(e) => setAmount(Number(e.target.value))}
+                        disabled={!isEnabled}
                       />
                     </div>
 
-                    {/* Actions */}
                     <div className="flex justify-center gap-4 w-full">
-                      <Button
-                        variant="ghost"
-                        size="md"
-                        onClick={onClose}
-                      >
+                      <Button variant="ghost" size="md" onClick={onClose}>
                         Cancel
                       </Button>
                       <Button
                         variant="primary"
                         size="md"
                         onClick={handleSubmit}
-                        isLoading={loading}
+                        isLoading={isSaving}
                       >
                         Save
                       </Button>

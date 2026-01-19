@@ -121,6 +121,14 @@ export const Projects: React.FC = () => {
           <div className="flex items-center justify-between">
             <Logo size="md" />
             <div className="flex items-center gap-3 sm:gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/wax')}
+                className="hidden sm:flex items-center gap-2 cursor-pointer"
+              >
+                Buy Wax
+              </Button>
               {user && (
                 <div className="text-sm hidden sm:block">
                   <span className="text-gray-400">Welcome, </span>

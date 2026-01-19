@@ -1,4 +1,4 @@
-import React, { useState, Fragment } from "react";
+import { useState, Fragment } from 'react';
 import {
   CardNumberElement,
   CardExpiryElement,
@@ -6,107 +6,111 @@ import {
   useStripe,
   useElements,
   Elements,
-} from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import { waxService } from "../../../services/waxService";
-import toast from "react-hot-toast";
-// import { appConfig } from "../../../config/appConfig.ts";
-import { Button } from "../../../components/common/Button";
+} from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { waxService } from '../../../services/waxService';
+import { toast } from 'sonner';
+import { Button } from '../../../components/common/Button';
 import {
   Dialog,
   DialogPanel,
   DialogTitle,
   Transition,
   TransitionChild,
-} from "@headlessui/react";
-import { Container } from "../../../components/common/Container";
+} from '@headlessui/react';
+import { Container } from '../../../components/common/Container';
 
 const stripePromise = loadStripe(
-  "pk_test_51Nd0aQIJpvqvRxISriiXTM98dTOZXNUtACLyIMGxoImOTbuOjjkqgowkdo2Acfhs7xPbeHQjO1uuBntSan6nU6qk002wruoMPA"
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 );
 
-const AddCardForm = ({
-  onClose,
-  onSuccess,
-}: {
+interface CardField {
+  cardNumber: boolean;
+  cardExpiry: boolean;
+  cardCvc: boolean;
+}
+
+interface AddCardFormProps {
   onClose: () => void;
   onSuccess?: () => void;
-}) => {
+}
+
+interface AddCardModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+const AddCardForm = ({ onClose, onSuccess }: AddCardFormProps) => {
   const stripe = useStripe();
   const elements = useElements();
-  const [loading, setLoading] = useState(false);
-  const [fieldValid, setFieldValid] = useState({
+  const [isSaving, setIsSaving] = useState(false);
+  const [fieldValid, setFieldValid] = useState<CardField>({
     cardNumber: false,
     cardExpiry: false,
     cardCvc: false,
   });
 
-  const getStyle = (field: "cardNumber" | "cardExpiry" | "cardCvc") => ({
+  const getCardFieldStyle = (field: keyof CardField) => ({
     base: {
-      fontSize: "14px",
-      fontFamily: "Inter, system-ui, sans-serif",
-      fontWeight: "normal",
-      color: fieldValid[field] ? "#70FFE9" : "white",
-      "::placeholder": {
-        color: "grey",
+      fontSize: '14px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontWeight: 'normal',
+      color: fieldValid[field] ? '#70FFE9' : 'white',
+      '::placeholder': {
+        color: 'grey',
       },
-      iconColor: fieldValid[field] ? "#70FFE9" : "white",
+      iconColor: fieldValid[field] ? '#70FFE9' : 'white',
     },
     invalid: {
-      color: "#FF6471",
-      iconColor: "#FF6471",
+      color: '#FF6471',
+      iconColor: '#FF6471',
     },
   });
 
-  const handleCardChange = (
-    field: "cardNumber" | "cardExpiry" | "cardCvc",
-    e: any
-  ) => {
+  const handleCardFieldChange = (field: keyof CardField, event: any) => {
     setFieldValid((prev) => ({
       ...prev,
-      [field]: e.complete,
+      [field]: event.complete,
     }));
   };
 
-  const saveCard = async () => {
+  const handleSavePaymentMethod = async () => {
     if (!stripe || !elements) return;
-    setLoading(true);
+    setIsSaving(true);
 
     const cardElement = elements.getElement(CardNumberElement);
     if (!cardElement) return;
 
     try {
       const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: "card",
+        type: 'card',
         card: cardElement,
       });
 
       if (error) {
-        toast.error(error.message || "Failed to create payment method");
-        setLoading(false);
+        toast.error(error.message || 'Failed to create payment method');
+        setIsSaving(false);
         return;
       }
 
-      await waxService.addCard(paymentMethod.id);
-      toast.success("Card saved");
+      await waxService.addPaymentMethod(paymentMethod.id);
+      toast.success('Payment method added successfully');
       onClose();
       onSuccess?.();
-    } catch (err: any) {
+    } catch (error: any) {
       toast.error(
-        err.response?.data?.message || err.message || "Failed to save card"
+        error.response?.data?.message || error.message || 'Failed to save payment method'
       );
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
   return (
     <div className="flex flex-col items-center">
-      <DialogTitle
-        as="h3"
-        className="text-[20px] font-bold text-white mb-6 text-center"
-      >
-        Add New Card
+      <DialogTitle as="h3" className="text-[20px] font-bold text-white mb-6 text-center">
+        Add Payment Method
       </DialogTitle>
 
       <div className="w-full space-y-4 mb-6">
@@ -117,10 +121,10 @@ const AddCardForm = ({
           <div className="relative w-full bg-[#080C10] border border-[#91ACC833] rounded-[15px] px-4 py-3 transition-all">
             <CardNumberElement
               options={{
-                style: getStyle("cardNumber"),
+                style: getCardFieldStyle('cardNumber'),
                 showIcon: true,
               }}
-              onChange={(e) => handleCardChange("cardNumber", e)}
+              onChange={(e) => handleCardFieldChange('cardNumber', e)}
             />
           </div>
         </div>
@@ -132,9 +136,9 @@ const AddCardForm = ({
           <div className="relative w-full bg-[#080C10] border border-[#91ACC833] rounded-[15px] px-4 py-3 transition-all">
             <CardExpiryElement
               options={{
-                style: getStyle("cardExpiry"),
+                style: getCardFieldStyle('cardExpiry'),
               }}
-              onChange={(e) => handleCardChange("cardExpiry", e)}
+              onChange={(e) => handleCardFieldChange('cardExpiry', e)}
             />
           </div>
         </div>
@@ -146,9 +150,9 @@ const AddCardForm = ({
           <div className="relative w-full bg-[#080C10] border border-[#91ACC833] rounded-[15px] px-4 py-3 transition-all">
             <CardCvcElement
               options={{
-                style: getStyle("cardCvc"),
+                style: getCardFieldStyle('cardCvc'),
               }}
-              onChange={(e) => handleCardChange("cardCvc", e)}
+              onChange={(e) => handleCardFieldChange('cardCvc', e)}
             />
           </div>
         </div>
@@ -161,25 +165,17 @@ const AddCardForm = ({
         <Button
           variant="primary"
           size="md"
-          onClick={saveCard}
-          isLoading={loading}
+          onClick={handleSavePaymentMethod}
+          isLoading={isSaving}
         >
-          Save Card
+          Save
         </Button>
       </div>
     </div>
   );
 };
 
-export function AddCardModal({
-  open,
-  onClose,
-  onSuccess,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSuccess?: () => void;
-}) {
+export function AddCardModal({ open, onClose, onSuccess }: AddCardModalProps) {
   return (
     <Transition appear show={open} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
