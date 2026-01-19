@@ -7,6 +7,7 @@ import { Register } from "./pages/Register";
 import { Projects } from "./pages/Projects";
 import { SSOConfirm } from "./pages/SSOConfirm";
 import { SSORedirect } from "./pages/SSORedirect";
+import { WaxPurchase } from "./pages/wax/WaxPurchase";
 
 const router = createBrowserRouter([
   {
@@ -43,6 +44,11 @@ const router = createBrowserRouter([
   {
     path: "*",
     element: <Navigate to="/login" replace />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/wax",
+    element: <WaxPurchase />,
     errorElement: <ErrorBoundary />,
   },
 ]);
