@@ -72,7 +72,7 @@ export const WaxPurchase: React.FC = () => {
             <Container>
               <div className="flex flex-col gap-4 md:gap-2 md:flex-row md:items-start md:justify-between mb-6">
                 <div className="flex-1">
-                  <h1 className="text-[#F3F4F6] font-bold text-[25px]">
+                  <h1 className="text-[#F3F4F6] font-bold text-[30px]">
                     Wax Balance
                   </h1>
                   <p className="text-[#91ACC8] text-[14px] font-normal">
